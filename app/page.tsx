@@ -1,11 +1,53 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  
+  // Refs to store audio and stream state for interruption
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const mediaSourceRef = useRef<MediaSource | null>(null);
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Function to interrupt/stop the speech playback
+  const interruptSpeech = () => {
+    console.log("Interrupting speech...");
+    
+    // Stop audio playback
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.currentTime = 0;
+      console.log("Audio paused and reset");
+    }
+    
+    // Cancel the reader stream
+    if (readerRef.current) {
+      readerRef.current.cancel().catch((err) => {
+        console.error("Error canceling reader:", err);
+      });
+      console.log("Reader stream canceled");
+    }
+    
+    // End the media source
+    if (mediaSourceRef.current && mediaSourceRef.current.readyState === "open") {
+      try {
+        mediaSourceRef.current.endOfStream();
+        console.log("MediaSource ended");
+      } catch (err) {
+        console.error("Error ending media source:", err);
+      }
+    }
+    
+    // Reset UI state
+    setIsPlaying(false);
+    setIsLoading(false);
+    setError(null);
+  };
 
   const generateSpeech = async () => {
     setIsLoading(true);
@@ -35,10 +77,9 @@ export default function Home() {
 
       // Use MediaSource for seamless streaming without interruption
       const reader = response.body.getReader();
+      readerRef.current = reader; // Store for interruption
       const chunks: Uint8Array[] = [];
       let totalSize = 0;
-      let audioElement: HTMLAudioElement | null = null;
-      let mediaSource: MediaSource | null = null;
       let sourceBuffer: SourceBuffer | null = null;
       let hasStartedPlayback = false;
       
@@ -47,8 +88,10 @@ export default function Home() {
       console.log("Content-Type:", contentType);
       
       // Setup MediaSource
-      mediaSource = new MediaSource();
-      audioElement = new Audio();
+      const mediaSource = new MediaSource();
+      mediaSourceRef.current = mediaSource; // Store for interruption
+      const audioElement = new Audio();
+      audioElementRef.current = audioElement; // Store for interruption
       const audioUrl = URL.createObjectURL(mediaSource);
       audioElement.src = audioUrl;
       
@@ -59,7 +102,7 @@ export default function Home() {
         
         try {
           // Create source buffer with proper codec
-          sourceBuffer = mediaSource!.addSourceBuffer(contentType);
+          sourceBuffer = mediaSource.addSourceBuffer(contentType);
           console.log("SourceBuffer created");
           
           // Helper to wait for source buffer to finish updating
@@ -142,6 +185,16 @@ export default function Home() {
         }
       });
       
+      audioElement.addEventListener("play", () => {
+        console.log("Audio started playing");
+        setIsPlaying(true);
+      });
+      
+      audioElement.addEventListener("pause", () => {
+        console.log("Audio paused");
+        setIsPlaying(false);
+      });
+      
       audioElement.addEventListener("loadstart", () => {
         console.log("Audio loading started");
       });
@@ -152,6 +205,7 @@ export default function Home() {
       
       audioElement.addEventListener("ended", () => {
         console.log("Audio playback ended");
+        setIsPlaying(false);
         URL.revokeObjectURL(audioUrl);
         setIsLoading(false);
       });
@@ -159,6 +213,7 @@ export default function Home() {
       audioElement.addEventListener("error", (e) => {
         console.error("Audio error:", e, audioElement?.error);
         setError(`Audio error: ${audioElement?.error?.message || "Unknown error"}`);
+        setIsPlaying(false);
         setIsLoading(false);
         URL.revokeObjectURL(audioUrl);
       });
@@ -203,13 +258,23 @@ export default function Home() {
             center.
           </p>
           <div className="flex flex-col gap-4">
-            <button
-              onClick={generateSpeech}
-              disabled={isLoading}
-              className="flex h-12 w-full items-center justify-center rounded-full bg-blue-600 px-5 text-white transition-colors hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed md:w-auto"
-            >
-              {isLoading ? "Generating..." : "Generate Speech"}
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                onClick={generateSpeech}
+                disabled={isLoading || isPlaying}
+                className="flex h-12 w-full items-center justify-center rounded-full bg-blue-600 px-5 text-white transition-colors hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed md:w-auto"
+              >
+                {isLoading ? "Generating..." : "Generate Speech"}
+              </button>
+              {isPlaying && (
+                <button
+                  onClick={interruptSpeech}
+                  className="flex h-12 w-full items-center justify-center rounded-full bg-red-600 px-5 text-white transition-colors hover:bg-red-700 md:w-auto"
+                >
+                  Stop Speech
+                </button>
+              )}
+            </div>
             {error && (
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             )}
