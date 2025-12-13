@@ -1,305 +1,126 @@
-"use client";
+import React from "react";
+import {
+  Terminal,
+  ArrowRight,
+  Paperclip,
+  Sparkles,
+  Layout,
+  Github,
+  Monitor,
+} from "lucide-react";
+import Link from "next/link";
 
-import Image from "next/image";
-import { useState, useRef } from "react";
-
-export default function Home() {
-  const recognition = new (window as any).webkitSpeechRecognition();
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  
-  // Refs to store audio and stream state for interruption
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const mediaSourceRef = useRef<MediaSource | null>(null);
-  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Function to interrupt/stop the speech playback
-  const interruptSpeech = () => {
-    console.log("Interrupting speech...");
-    
-    // Stop audio playback
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current.currentTime = 0;
-      console.log("Audio paused and reset");
-    }
-    
-    // Cancel the reader stream
-    if (readerRef.current) {
-      readerRef.current.cancel().catch((err) => {
-        console.error("Error canceling reader:", err);
-      });
-      console.log("Reader stream canceled");
-    }
-    
-    // End the media source
-    if (mediaSourceRef.current && mediaSourceRef.current.readyState === "open") {
-      try {
-        mediaSourceRef.current.endOfStream();
-        console.log("MediaSource ended");
-      } catch (err) {
-        console.error("Error ending media source:", err);
-      }
-    }
-    
-    // Reset UI state
-    setIsPlaying(false);
-    setIsLoading(false);
-    setError(null);
-  };
-
-  const generateSpeech = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/speech", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text: "Before you can begin to determine what the composition of a particular paragraph will be, you must first decide on an argument and a working thesis statement for your paper. What is the most important idea that you are trying to convey to your reader? The information in each paragraph must be related to that idea. In other words, your paragraphs should remind your reader that there is a recurrent relationship between your thesis and the information in each paragraph. A working thesis functions like a seed from which your paper, and your ideas, will grow. The whole process is an organic one—a natural progression from a seed to a full-blown paper where there are direct, familial relationships between all of the ideas in the paper. The decision about what to put into your paragraphs begins with the germination of a seed of ideas; this “germination process” is better known as brainstorming. There are many techniques for brainstorming; whichever one you choose, this stage of paragraph development cannot be skipped. Building paragraphs can be like building a skyscraper: there must be a well-planned foundation that supports what you are building. Any cracks, inconsistencies, or other corruptions of the foundation can cause your whole paper to crumble.",
-          voice: "coral",
-          instructions: "Speak in a cheerful and positive tone.",
-          response_format: "mp3",
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate speech");
-      }
-
-      if (!response.body) {
-        throw new Error("No response body");
-      }
-
-      // Use MediaSource for seamless streaming without interruption
-      const reader = response.body.getReader();
-      readerRef.current = reader; // Store for interruption
-      const chunks: Uint8Array[] = [];
-      let totalSize = 0;
-      let sourceBuffer: SourceBuffer | null = null;
-      let hasStartedPlayback = false;
-      
-      // Get content type from response headers
-      const contentType = response.headers.get("content-type") || "audio/mpeg";
-      console.log("Content-Type:", contentType);
-      
-      // Setup MediaSource
-      const mediaSource = new MediaSource();
-      mediaSourceRef.current = mediaSource; // Store for interruption
-      const audioElement = new Audio();
-      audioElementRef.current = audioElement; // Store for interruption
-      const audioUrl = URL.createObjectURL(mediaSource);
-      audioElement.src = audioUrl;
-      
-      console.log("MediaSource created");
-      
-      mediaSource.addEventListener("sourceopen", async () => {
-        console.log("MediaSource opened");
-        
-        try {
-          // Create source buffer with proper codec
-          sourceBuffer = mediaSource.addSourceBuffer(contentType);
-          console.log("SourceBuffer created");
-          
-          // Helper to wait for source buffer to finish updating
-          const waitForSourceBuffer = async () => {
-            return new Promise<void>((resolve) => {
-              if (!sourceBuffer!.updating) {
-                resolve();
-              } else {
-                const onUpdateEnd = () => {
-                  sourceBuffer!.removeEventListener("updateend", onUpdateEnd);
-                  resolve();
-                };
-                sourceBuffer!.addEventListener("updateend", onUpdateEnd);
-              }
-            });
-          };
-          
-          // Start appending chunks as they arrive
-          let chunkCount = 0;
-          let lastChunkTime = Date.now();
-          
-          while (true) {
-            const { done, value } = await reader.read();
-            
-            if (done) {
-              // Wait for last buffer to be appended
-              await waitForSourceBuffer();
-              const totalTime = Date.now() - lastChunkTime;
-              console.log(`Stream complete after ${totalTime}ms. Total chunks: ${chunks.length}, Total size: ${totalSize} bytes`);
-              mediaSource!.endOfStream();
-              break;
-            }
-            
-            if (!value || value.byteLength === 0) {
-              console.warn("Received empty chunk, skipping");
-              continue;
-            }
-            
-            chunks.push(value);
-            totalSize += value.byteLength;
-            chunkCount++;
-            
-            const timeSinceLastChunk = Date.now() - lastChunkTime;
-            lastChunkTime = Date.now();
-            
-            if (chunkCount % 10 === 0 || value.byteLength > 100000) {
-              console.log(`Chunk ${chunkCount}: ${value.byteLength} bytes. Total: ${totalSize} bytes. Time since last: ${timeSinceLastChunk}ms`);
-            }
-            
-            // Wait for previous buffer to finish updating before appending new one
-            await waitForSourceBuffer();
-            
-            try {
-              sourceBuffer!.appendBuffer(value);
-              
-              // Start playing once we have enough buffered
-              if (!hasStartedPlayback && totalSize > 150 * 1024) {
-                console.log(`Threshold reached at chunk ${chunkCount}, starting playback with ${totalSize} bytes`);
-                audioElement!.play().catch((err) => {
-                  console.error("Play error:", err);
-                  setError("Failed to start playback: " + err.message);
-                });
-                hasStartedPlayback = true;
-              }
-            } catch (e) {
-              console.error("Error appending buffer:", e);
-              // If append fails, try again next iteration
-              chunks.pop();
-              totalSize -= value.byteLength;
-            }
-          }
-        } catch (err) {
-          console.error("MediaSource error:", err);
-          setError("Failed to stream audio: " + (err instanceof Error ? err.message : "Unknown error"));
-          try {
-            mediaSource!.endOfStream("network");
-          } catch (e) {
-            console.error("Error ending stream:", e);
-          }
-        }
-      });
-      
-      audioElement.addEventListener("play", () => {
-        console.log("Audio started playing");
-        setIsPlaying(true);
-      });
-      
-      audioElement.addEventListener("pause", () => {
-        console.log("Audio paused");
-        setIsPlaying(false);
-      });
-      
-      audioElement.addEventListener("loadstart", () => {
-        console.log("Audio loading started");
-      });
-      
-      audioElement.addEventListener("canplay", () => {
-        console.log("Audio can play");
-      });
-      
-      audioElement.addEventListener("ended", () => {
-        console.log("Audio playback ended");
-        setIsPlaying(false);
-        URL.revokeObjectURL(audioUrl);
-        setIsLoading(false);
-      });
-      
-      audioElement.addEventListener("error", (e) => {
-        console.error("Audio error:", e, audioElement?.error);
-        setError(`Audio error: ${audioElement?.error?.message || "Unknown error"}`);
-        setIsPlaying(false);
-        setIsLoading(false);
-        URL.revokeObjectURL(audioUrl);
-      });
-    } catch (err) {
-      console.error("Error generating speech:", err);
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const startRecognition = () => {
-    recognition.start();
-    recognition.onresult = (event: any) => {
-      const result = event.results[event.results.length - 1];
-      console.log(result[0].transcript);
-      setTranscript(result[0].transcript);
-    };
-  };
-
-  const stopRecognition = () => {
-    recognition.stop();
-  };
-
+export default function HomePage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                onClick={generateSpeech}
-                disabled={isLoading || isPlaying}
-                className="flex h-12 w-full items-center justify-center rounded-full bg-blue-600 px-5 text-white transition-colors hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed md:w-auto"
-              >
-                {isLoading ? "Generating..." : "Generate Speech"}
-              </button>
-              {isPlaying && (
-                <button
-                  onClick={interruptSpeech}
-                  className="flex h-12 w-full items-center justify-center rounded-full bg-red-600 px-5 text-white transition-colors hover:bg-red-700 md:w-auto"
-                >
-                  Stop Speech
-                </button>
-              )}
-            </div>
-            {error && (
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            )}
+    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30 relative overflow-hidden font-sans">
+      {/* Background Effects */}
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        {/* Subtle top gradient for depth */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.15),transparent_70%)] opacity-70" />
+
+        {/* The "Planet" Glow at the bottom - positioned to peek up from the bottom */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[120%] h-[400px] bg-blue-600/10 blur-[120px] rounded-t-full" />
+
+        {/* Fine border line for the curvature effect (optional, subtle) */}
+        <div className="absolute bottom-[-200px] left-1/2 -translate-x-1/2 w-[200%] h-[600px] rounded-[100%] border-t border-white/5 opacity-50" />
+      </div>
+
+      {/* Navbar */}
+      <nav className="flex items-center justify-between px-6 py-4 relative z-50">
+        <div className="flex items-center gap-2">
+          {/* Logo */}
+          <div className="bg-white text-black p-1 rounded-md">
+            <Terminal size={20} fill="currentColor" className="w-5 h-5" />
+          </div>
+          <span className="font-bold text-xl tracking-tight">interviewee</span>
+        </div>
+
+        <div className="hidden md:flex items-center gap-8 text-sm text-gray-400 font-medium">
+          <Link href="#" className="hover:text-white transition-colors">
+            Community
+          </Link>
+          <Link href="#" className="hover:text-white transition-colors">
+            Enterprise
+          </Link>
+          <Link
+            href="#"
+            className="hover:text-white transition-colors flex items-center gap-1"
+          >
+            Resources <span className="text-[10px]">▼</span>
+          </Link>
+          <Link href="#" className="hover:text-white transition-colors">
+            Careers
+          </Link>
+          <Link href="#" className="hover:text-white transition-colors">
+            Pricing
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {/* Mobile/Extra Icons hidden for simplicity or matching screenshot */}
+          <div className="hidden md:flex items-center gap-4 text-gray-400">
+            <Github
+              size={20}
+              className="hover:text-white cursor-pointer transition-colors"
+            />
+          </div>
+          <button className="text-sm font-medium hover:text-white text-gray-300 transition-colors">
+            Sign in
+          </button>
+          <button className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-[0_0_20px_-5px_rgba(37,99,235,0.5)]">
+            Get started
+          </button>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="flex flex-col items-center justify-center px-4 pt-24 pb-32 max-w-5xl mx-auto text-center relative z-10">
+        {/* Badge */}
+        <div className="mb-10 animate-fade-in-up">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs font-medium text-gray-300 hover:bg-white/10 transition-colors cursor-pointer backdrop-blur-sm">
+            <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
+              b²
+            </span>
+            <span>Introducing Interviewee beta 1</span>
           </div>
         </div>
-        <div>
-            <textarea className="w-full h-40 p-2 border border-gray-300 rounded-md" value={transcript} onChange={(e) => setTranscript(e.target.value)} />
-            <button onClick={startRecognition}>Start Recognition</button>
-            <button onClick={stopRecognition}>Stop Recognition</button>
+
+        {/* Headline */}
+        <h1 className="text-4xl md:text-7xl font-bold tracking-tight mb-8 leading-[1.1]">
+          Let's <span className="text-blue-400 inline-block">interview</span>{" "}
+          you...
+        </h1>
+
+        {/* Subheadline */}
+        <p className="text-lg md:text-xl text-gray-400 mb-12 max-w-2xl mx-auto font-light">
+          Interview with AI to get a personalized interview.
+        </p>
+
+        {/* Input Area */}
+        <div className="w-full max-w-3xl relative group mx-auto">
+          {/* Glow effect behind the input */}
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl blur opacity-100 transition duration-500"></div>
+
+          <div className="relative bg-[#0f0f0f] rounded-xl border border-white/10 shadow-2xl overflow-hidden flex flex-col min-h-[160px]">
+            <textarea
+              placeholder="Let's have an interview with you..."
+              className="w-full flex-1 bg-transparent text-white p-6 resize-none outline-none text-lg placeholder:text-gray-600 font-light"
+            />
+
+            <div className="flex items-center justify-between px-4 py-3 bg-transparent">
+              <p className="text-gray-600 text-sm">
+                Tip: You can send your github link to get a personalized
+                interview
+              </p>
+
+              <div className="flex items-center gap-4">
+                <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg hover:shadow-blue-500/25 cursor-pointer">
+                  Let's Interview
+                  <ArrowRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </div>
