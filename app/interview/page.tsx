@@ -1,7 +1,44 @@
-import React from 'react';
+"use client";
+
+import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Video, PhoneOff, MoreVertical, Info, Users, MessageSquare, Hand, MonitorUp, Terminal } from 'lucide-react';
 
 export default function InterviewPage() {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const startPosition = useRef({ x: 0, y: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    startPosition.current = { ...position };
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      const dx = e.clientX - dragStart.current.x;
+      const dy = e.clientY - dragStart.current.y;
+      setPosition({
+        x: startPosition.current.x + dx,
+        y: startPosition.current.y + dy
+      });
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   return (
     <div className="h-screen w-full bg-[#0a0a0a] flex flex-col relative text-white overflow-hidden font-sans selection:bg-blue-500/30">
        {/* Background Effects (Matching Home Page) */}
@@ -46,16 +83,23 @@ export default function InterviewPage() {
          </div>
 
          {/* User Video (Self View - Floating PiP) */}
-         <div className="absolute bottom-8 right-8 w-72 h-48 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 group cursor-move">
-             <div className="text-center opacity-50">
+         <div 
+            className="absolute bottom-8 right-8 w-72 h-48 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex items-center justify-center hover:scale-105 transition-transform duration-75 group cursor-move z-50"
+            style={{ 
+                transform: `translate(${position.x}px, ${position.y}px)`,
+                transition: isDragging.current ? 'none' : 'transform 0.3s ease-out' 
+            }}
+            onMouseDown={handleMouseDown}
+         >
+             <div className="text-center opacity-50 pointer-events-none">
                  <div className="w-12 h-12 bg-white/10 rounded-full mx-auto mb-2 flex items-center justify-center">
                     <span className="text-lg font-bold">You</span>
                  </div>
              </div>
-              <div className="absolute top-3 right-3 bg-black/50 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute top-3 right-3 bg-black/50 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                  You
              </div>
-             <div className="absolute bottom-3 left-3">
+             <div className="absolute bottom-3 left-3 pointer-events-none">
                   <div className="bg-blue-600/90 p-1.5 rounded-full shadow-lg"><Mic className="w-3 h-3 text-white" /></div>
              </div>
          </div>
