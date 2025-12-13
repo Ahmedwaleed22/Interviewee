@@ -66,7 +66,7 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
   };
 
   return (
-    <div className={`h-full bg-[#1a1a1a] border border-white/10 flex flex-col shadow-2xl transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) z-40 rounded-2xl overflow-hidden ${
+    <div className={`h-full bg-[#1a1a1a] border border-white/10 flex flex-col shadow-2xl transition-all duration-300 cubic-bezier(0.4, 0, 0.2, 1) z-40 rounded-2xl overflow-hidden ${
       isOpen ? 'w-[360px] opacity-100 ml-4 translate-x-0' : 'w-0 opacity-0 ml-0 translate-x-full border-none'
     }`}>
       <div className="min-w-[360px] h-full flex flex-col">
@@ -75,7 +75,7 @@ export default function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
           <h2 className="text-white font-medium text-lg">In-call messages</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+            className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
