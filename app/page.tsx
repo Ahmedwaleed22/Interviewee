@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import {
   Terminal,
@@ -9,8 +11,15 @@ import {
   Monitor,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
+  const router = useRouter();
+  
+  const handleInterview = () => {
+    router.push("/interview");
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-blue-500/30 relative overflow-hidden font-sans">
       {/* Background Effects */}
@@ -114,7 +123,7 @@ export default function HomePage() {
               </p>
 
               <div className="flex items-center gap-4">
-                <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg hover:shadow-blue-500/25 cursor-pointer">
+                <button onClick={handleInterview} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg hover:shadow-blue-500/25 cursor-pointer">
                   Let's Interview
                   <ArrowRight size={16} />
                 </button>
