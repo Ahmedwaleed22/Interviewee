@@ -1,44 +1,9 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { Mic, Video, PhoneOff, MoreVertical, Info, Users, MessageSquare, Hand, MonitorUp, Terminal } from 'lucide-react';
 
 export default function InterviewPage() {
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const isDragging = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0 });
-  const startPosition = useRef({ x: 0, y: 0 });
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    isDragging.current = true;
-    dragStart.current = { x: e.clientX, y: e.clientY };
-    startPosition.current = { ...position };
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging.current) return;
-      const dx = e.clientX - dragStart.current.x;
-      const dy = e.clientY - dragStart.current.y;
-      setPosition({
-        x: startPosition.current.x + dx,
-        y: startPosition.current.y + dy
-      });
-    };
-
-    const handleMouseUp = () => {
-      isDragging.current = false;
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, []);
-
   return (
     <div className="h-screen w-full bg-[#0a0a0a] flex flex-col relative text-white overflow-hidden font-sans selection:bg-blue-500/30">
        {/* Background Effects (Matching Home Page) */}
@@ -48,11 +13,9 @@ export default function InterviewPage() {
       </div>
 
       {/* Main Content Area - Video Grid */}
-      <div className="flex-1 p-4 flex gap-4 overflow-hidden relative z-10">
+      <div className="flex-1 p-4 flex gap-4 relative z-30">
          {/* AI Interviewer Video (Main) */}
          <div className="flex-1 bg-[#0f0f0f] border border-white/10 rounded-2xl relative overflow-hidden flex items-center justify-center shadow-2xl">
-            {/* Grid Pattern or subtle texture could go here */}
-            
             <div className="text-center z-10">
                 <div className="relative">
                     <div className="w-32 h-32 bg-blue-600/20 rounded-full mx-auto mb-4 flex items-center justify-center border border-blue-500/30 shadow-[0_0_30px_-5px_rgba(37,99,235,0.3)]">
@@ -73,23 +36,11 @@ export default function InterviewPage() {
                  </div>
                  Speaking...
              </div>
-             
-             {/* Subtitles Overlay */}
-             {/* <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-3xl text-center px-4">
-                 <p className="bg-black/60 border border-white/5 px-6 py-4 rounded-2xl text-xl backdrop-blur-md shadow-lg leading-relaxed text-blue-50">
-                    "Welcome to your interview. I've reviewed your GitHub profile. Can you tell me more about your experience with React?"
-                 </p>
-             </div> */}
          </div>
 
          {/* User Video (Self View - Floating PiP) */}
-         <div 
-            className="absolute bottom-8 right-8 w-72 h-48 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex items-center justify-center hover:scale-105 transition-transform duration-75 group cursor-move z-50"
-            style={{ 
-                transform: `translate(${position.x}px, ${position.y}px)`,
-                transition: isDragging.current ? 'none' : 'transform 0.3s ease-out' 
-            }}
-            onMouseDown={handleMouseDown}
+         <div className="absolute bottom-8 right-8 w-72 h-48 bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex items-center justify-center hover:scale-105 transition-all duration-300 group z-50"
+              style={{ transformOrigin: 'bottom right' }}
          >
              <div className="text-center opacity-50 pointer-events-none">
                  <div className="w-12 h-12 bg-white/10 rounded-full mx-auto mb-2 flex items-center justify-center">
