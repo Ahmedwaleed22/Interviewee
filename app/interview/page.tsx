@@ -3,9 +3,15 @@
 import React, { useState } from 'react';
 import { Mic, Video, PhoneOff, MoreVertical, Info, Users, MessageSquare, Hand, MonitorUp, Terminal } from 'lucide-react';
 import ChatSidebar from '../../components/ChatSidebar';
+import { useRouter } from 'next/navigation';
 
 export default function InterviewPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const router = useRouter();
+
+  const handleEndInterview = () => {
+    router.push("/");
+  };
 
   return (
     <div className="h-screen w-full bg-[#0a0a0a] flex flex-col relative text-white overflow-hidden font-sans selection:bg-blue-500/30">
@@ -94,7 +100,7 @@ export default function InterviewPage() {
              <button className="p-4 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white transition-all hover:scale-110">
                 <MoreVertical className="w-5 h-5" />
             </button>
-            <button className="px-8 rounded-full bg-red-600 hover:bg-red-500 text-white transition-all hover:shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] hover:scale-105 h-14 flex items-center justify-center ml-2">
+            <button onClick={handleEndInterview} className="px-8 rounded-full bg-red-600 hover:bg-red-500 text-white transition-all hover:shadow-[0_0_20px_-5px_rgba(220,38,38,0.5)] hover:scale-105 h-14 flex items-center justify-center ml-2 cursor-pointer">
                 <PhoneOff className="w-6 h-6 fill-current" />
             </button>
         </div>
