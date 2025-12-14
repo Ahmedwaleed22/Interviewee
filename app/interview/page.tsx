@@ -10,7 +10,7 @@ export default function InterviewPage() {
   const router = useRouter();
 
   const handleEndInterview = () => {
-    router.push("/");
+    router.push("/end");
   };
 
   return (
