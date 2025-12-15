@@ -1,7 +1,27 @@
 {
-  "name": "frontend",
+  "name": "interviewee-frontend",
   "version": "0.1.0",
+  "description": "AI-powered mock interview platform frontend",
   "private": true,
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ai-mock-interview.git",
+    "directory": "frontend"
+  },
+  "keywords": [
+    "ai",
+    "interview",
+    "mock-interview",
+    "nextjs",
+    "react",
+    "openai"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "yarn": ">=1.22.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
