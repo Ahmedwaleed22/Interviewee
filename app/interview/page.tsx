@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 export default function InterviewPage() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const router = useRouter();
+  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   const handleEndInterview = () => {
     router.push("/end");
@@ -75,7 +76,7 @@ export default function InterviewPage() {
       <div className="h-24 px-8 flex items-center justify-between shrink-0 relative z-20">
         {/* Left Info */}
         <div className="flex items-center gap-4 min-w-[240px] text-gray-300">
-           <span className="font-medium text-lg tracking-tight">10:00 AM</span>
+           <span className="font-medium text-lg tracking-tight">{currentTime}</span>
            <span className="h-4 w-px bg-white/10"></span>
            <div className="flex flex-col">
                <span className="font-medium text-sm text-white tracking-tight">Technical Interview</span>

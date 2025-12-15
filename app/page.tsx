@@ -88,7 +88,7 @@ export default function HomePage() {
         <div className="mb-10 animate-fade-in-up">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs font-medium text-gray-300 hover:bg-white/10 transition-colors cursor-pointer backdrop-blur-sm">
             <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
-              b²
+              I²
             </span>
             <span>Introducing Interviewee beta 1</span>
           </div>
