@@ -1,3 +1,6 @@
+![![Banner]](https://banners.beyondco.de/Interviewee.png?theme=light&packageManager=&packageName=&pattern=architect&style=style_1&description=Practice.+Improve.+Succee.&md=1&showWatermark=0&fontSize=100px&images=annotation&widths=auto)
+
+
 # Interviewee Frontend
 
 Frontend application for the Interviewee AI Mock Interview Platform.
